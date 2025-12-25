@@ -4,6 +4,8 @@ import { Service, Artist, Booking } from "@/lib/data";
 interface User {
   isLoggedIn: boolean;
   hasSeenOnboarding: boolean;
+  hasSeenSplash: boolean;
+  hasDetectedLocation: boolean;
   name: string;
   email: string;
   phone: string;
@@ -33,12 +35,16 @@ interface AppContextType {
   signup: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
   completeOnboarding: () => void;
+  completeSplash: () => void;
+  completeLocationDetection: (city: string) => void;
   resetBooking: () => void;
 }
 
 const defaultUser: User = {
   isLoggedIn: false,
   hasSeenOnboarding: false,
+  hasSeenSplash: false,
+  hasDetectedLocation: false,
   name: "",
   email: "",
   phone: "",
@@ -73,23 +79,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const saved = localStorage.getItem("luxe_favorites");
     return saved ? JSON.parse(saved) : [];
   });
-
-  // Detect location on mount
-  useEffect(() => {
-    const detectLocation = async () => {
-      try {
-        const response = await fetch("https://ipapi.co/json/");
-        const data = await response.json();
-        setUserState((prev) => ({ ...prev, location: data.city || "Mumbai" }));
-      } catch {
-        setUserState((prev) => ({ ...prev, location: "Mumbai" }));
-      }
-    };
-
-    if (user.location === "Detecting...") {
-      detectLocation();
-    }
-  }, [user.location]);
 
   // Persist user data
   useEffect(() => {
@@ -127,7 +116,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const login = async (email: string, _password: string): Promise<boolean> => {
-    // Mock login
     await new Promise((resolve) => setTimeout(resolve, 1000));
     setUserState((prev) => ({
       ...prev,
@@ -139,7 +127,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const signup = async (name: string, email: string, _password: string): Promise<boolean> => {
-    // Mock signup
     await new Promise((resolve) => setTimeout(resolve, 1000));
     setUserState((prev) => ({
       ...prev,
@@ -151,11 +138,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
-    setUserState({ ...defaultUser, hasSeenOnboarding: true, location: user.location });
+    setUserState({ ...defaultUser, hasSeenOnboarding: true, hasSeenSplash: true, hasDetectedLocation: true, location: user.location });
   };
 
   const completeOnboarding = () => {
     setUserState((prev) => ({ ...prev, hasSeenOnboarding: true }));
+  };
+
+  const completeSplash = () => {
+    setUserState((prev) => ({ ...prev, hasSeenSplash: true }));
+  };
+
+  const completeLocationDetection = (city: string) => {
+    setUserState((prev) => ({ ...prev, hasDetectedLocation: true, location: city }));
   };
 
   const resetBooking = () => {
@@ -177,6 +172,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         signup,
         logout,
         completeOnboarding,
+        completeSplash,
+        completeLocationDetection,
         resetBooking,
       }}
     >

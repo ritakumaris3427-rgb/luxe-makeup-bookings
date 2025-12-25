@@ -13,6 +13,7 @@ export default function BookingStep2() {
   const navigate = useNavigate();
   const { booking, setBooking } = useApp();
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
   // Generate calendar days
   const calendarDays = useMemo(() => {
@@ -25,12 +26,10 @@ export default function BookingStep2() {
 
     const days: (number | null)[] = [];
     
-    // Add empty slots for days before the first day
     for (let i = 0; i < startingDay; i++) {
       days.push(null);
     }
     
-    // Add days of the month
     for (let i = 1; i <= daysInMonth; i++) {
       days.push(i);
     }
@@ -56,16 +55,27 @@ export default function BookingStep2() {
       weekday: "short",
       month: "short",
       day: "numeric",
+      year: "numeric",
     });
   };
 
   const handleDateSelect = (day: number) => {
     if (isDateDisabled(day)) return;
-    setBooking({ date: formatSelectedDate(day) });
+    setSelectedDay(day);
+    const formattedDate = formatSelectedDate(day);
+    setBooking({ date: formattedDate });
   };
 
   const handleTimeSelect = (time: string) => {
     setBooking({ time });
+  };
+
+  const handlePrevMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
   };
 
   const handleContinue = () => {
@@ -84,6 +94,12 @@ export default function BookingStep2() {
     navigate("/services");
     return null;
   }
+
+  const isSelectedDate = (day: number) => {
+    if (!booking.date || !day) return false;
+    const formattedDay = formatSelectedDate(day);
+    return booking.date === formattedDay;
+  };
 
   return (
     <PageContainer className="pt-4" withBottomNav={false}>
@@ -119,19 +135,15 @@ export default function BookingStep2() {
         {/* Month Navigation */}
         <div className="flex items-center justify-between mb-4">
           <button
-            onClick={() =>
-              setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() - 1)))
-            }
-            className="w-8 h-8 rounded-full hover:bg-muted flex items-center justify-center"
+            onClick={handlePrevMonth}
+            className="w-10 h-10 rounded-full hover:bg-muted flex items-center justify-center transition-colors"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <h3 className="font-semibold text-foreground">{monthYear}</h3>
+          <h3 className="font-semibold text-foreground text-lg">{monthYear}</h3>
           <button
-            onClick={() =>
-              setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() + 1)))
-            }
-            className="w-8 h-8 rounded-full hover:bg-muted flex items-center justify-center"
+            onClick={handleNextMonth}
+            className="w-10 h-10 rounded-full hover:bg-muted flex items-center justify-center transition-colors"
           >
             <ChevronRight className="w-5 h-5" />
           </button>
@@ -140,7 +152,7 @@ export default function BookingStep2() {
         {/* Weekday headers */}
         <div className="grid grid-cols-7 gap-1 mb-2">
           {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-            <div key={day} className="text-center text-xs text-muted-foreground py-2">
+            <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
               {day}
             </div>
           ))}
@@ -149,26 +161,40 @@ export default function BookingStep2() {
         {/* Calendar grid */}
         <div className="grid grid-cols-7 gap-1">
           {calendarDays.map((day, index) => (
-            <div key={index} className="aspect-square">
+            <div key={index} className="aspect-square p-0.5">
               {day && (
-                <button
+                <motion.button
+                  whileHover={{ scale: isDateDisabled(day) ? 1 : 1.1 }}
+                  whileTap={{ scale: isDateDisabled(day) ? 1 : 0.95 }}
                   onClick={() => handleDateSelect(day)}
                   disabled={isDateDisabled(day)}
                   className={cn(
-                    "w-full h-full rounded-lg flex items-center justify-center text-sm transition-all",
+                    "w-full h-full rounded-xl flex items-center justify-center text-sm font-medium transition-all duration-200",
                     isDateDisabled(day)
-                      ? "text-muted-foreground/50 cursor-not-allowed"
-                      : "hover:bg-rose-light text-foreground",
-                    booking.date === formatSelectedDate(day) &&
-                      "gradient-rose text-white font-semibold"
+                      ? "text-muted-foreground/40 cursor-not-allowed"
+                      : "hover:bg-rose-light text-foreground cursor-pointer",
+                    isSelectedDate(day) &&
+                      "gradient-rose text-white shadow-soft"
                   )}
                 >
                   {day}
-                </button>
+                </motion.button>
               )}
             </div>
           ))}
         </div>
+
+        {/* Selected date display */}
+        {booking.date && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            className="mt-4 pt-4 border-t border-border"
+          >
+            <p className="text-sm text-muted-foreground">Selected Date</p>
+            <p className="font-semibold text-foreground">{booking.date}</p>
+          </motion.div>
+        )}
       </motion.div>
 
       {/* Time Slots */}
@@ -180,34 +206,64 @@ export default function BookingStep2() {
       >
         <h3 className="font-semibold text-foreground mb-3">Available Time Slots</h3>
         <div className="grid grid-cols-3 gap-2">
-          {timeSlots.map((time) => (
-            <button
+          {timeSlots.map((time, index) => (
+            <motion.button
               key={time}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.02 }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => handleTimeSelect(time)}
               className={cn(
-                "py-3 rounded-xl text-sm font-medium transition-all",
+                "py-3 rounded-xl text-sm font-medium transition-all duration-200",
                 booking.time === time
                   ? "gradient-rose text-white shadow-soft"
                   : "bg-card border border-border text-foreground hover:border-primary/50"
               )}
             >
               {time}
-            </button>
+            </motion.button>
           ))}
         </div>
+
+        {/* Selected time display */}
+        {booking.time && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mt-4 p-3 bg-rose-light/50 rounded-xl"
+          >
+            <p className="text-sm text-center">
+              <span className="text-muted-foreground">Appointment at </span>
+              <span className="font-semibold text-foreground">{booking.time}</span>
+            </p>
+          </motion.div>
+        )}
       </motion.div>
 
       {/* Bottom CTA */}
       <div className="fixed bottom-0 left-0 right-0 bg-card/90 backdrop-blur-xl border-t border-border p-4">
-        <Button
-          variant="rose"
-          size="lg"
-          className="w-full"
-          onClick={handleContinue}
-          disabled={!booking.date || !booking.time}
-        >
-          Continue
-        </Button>
+        <div className="max-w-lg mx-auto">
+          {booking.date && booking.time && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center text-sm text-muted-foreground mb-3"
+            >
+              {booking.date} at {booking.time}
+            </motion.p>
+          )}
+          <Button
+            variant="rose"
+            size="lg"
+            className="w-full"
+            onClick={handleContinue}
+            disabled={!booking.date || !booking.time}
+          >
+            Continue
+          </Button>
+        </div>
       </div>
     </PageContainer>
   );

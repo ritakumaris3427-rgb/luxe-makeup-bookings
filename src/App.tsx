@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AppProvider, useApp } from "@/contexts/AppContext";
 import { BottomNav } from "@/components/layout/BottomNav";
+import { SplashScreen } from "@/components/SplashScreen";
+import { LocationPermission } from "@/components/LocationPermission";
 import Onboarding from "./pages/Onboarding";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -24,12 +27,28 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-function AppRoutes() {
-  const { user } = useApp();
-  const showBottomNav = ["/home", "/services", "/offers", "/bookings", "/profile"].some(
-    (path) => window.location.pathname === path
-  );
+function AppContent() {
+  const { user, completeSplash, completeLocationDetection } = useApp();
+  const location = useLocation();
+  
+  const showBottomNav = ["/home", "/services", "/offers", "/bookings", "/profile"].includes(location.pathname);
 
+  // Show splash screen first
+  if (!user.hasSeenSplash) {
+    return <SplashScreen onComplete={completeSplash} />;
+  }
+
+  // Then show location detection
+  if (!user.hasDetectedLocation) {
+    return (
+      <LocationPermission
+        onLocationDetected={(city) => completeLocationDetection(city)}
+        onSkip={() => completeLocationDetection("Mumbai")}
+      />
+    );
+  }
+
+  // Then show onboarding if not seen
   if (!user.hasSeenOnboarding) {
     return (
       <Routes>
@@ -64,15 +83,21 @@ function AppRoutes() {
   );
 }
 
+function AppRoutes() {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
+  );
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AppProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
+        <AppRoutes />
       </TooltipProvider>
     </AppProvider>
   </QueryClientProvider>
